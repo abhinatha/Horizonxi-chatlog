@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FFXI Chat Viewer</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #171922;
+    --fg: #e6e6e6;
+    --muted: #8a8f9a;
+    --border: #2a2d39;
+    --say: #ffffff;
+    --shout: #ff7a4d;
+    --tell: #ff7ad9;
+    --ls:  #58d36e;
+    --ls2: #5ad0c6;
+    --yell: #ffd24d;
+    --party: #6fa8ff;
+    --fontsize: 15px;
+    --fontfamily: 'Consolas', 'Menlo', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: var(--fontfamily); font-size: var(--fontsize);
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 8px 10px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  header .group {
+    display: flex; gap: 6px; align-items: center;
+    padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+  }
+  header label { color: var(--muted); font-size: 12px; }
+  header button {
+    background: #242836; color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; cursor: pointer; font: inherit;
+  }
+  header button:hover { background: #2e3346; }
+  header .toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  header input[type=color] { width: 28px; height: 22px; border: none; background: transparent; padding: 0; cursor: pointer; }
+  header input[type=range] { width: 110px; }
+  header select {
+    background: #242836; color: var(--fg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 6px; font: inherit;
+  }
+  #status { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+  main { flex: 1; overflow: auto; padding: 8px 12px; scroll-behavior: smooth; }
+  .line { white-space: pre-wrap; word-break: break-word; line-height: 1.35; }
+  .time { color: var(--muted); margin-right: 6px; }
+  .tag  { font-weight: 700; margin-right: 6px; }
+
+  .t-SAY    { color: var(--say); }
+  .t-SHOUT  { color: var(--shout); }
+  .t-TELL   { color: var(--tell); }
+  .t-LS     { color: var(--ls); }
+  .t-LS2    { color: var(--ls2); }
+  .t-YELL   { color: var(--yell); }
+  .t-PARTY  { color: var(--party); }
+  .t-DEBUG  { color: #999; }
+  .system   { color: var(--muted); font-style: italic; }
+
+  footer { padding: 6px 10px; background: var(--panel); border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+  #grant {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center; z-index: 10;
+  }
+  #grant .box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; max-width: 420px; text-align: center;
+  }
+  #grant button { margin-top: 14px; font-size: 15px; padding: 8px 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="group">
+    <button id="pickDir">Pick logs folder…</button>
+    <button id="forget" title="Clear saved folder">Forget</button>
+  </div>
+
+  <div class="group">
+    <label class="toggle"><input type="checkbox" data-chan="SAY"   checked> <span class="t-SAY">Say</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="SHOUT" checked> <span class="t-SHOUT">Shout</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="TELL"  checked> <span class="t-TELL">Tell</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="LS"    checked> <span class="t-LS">LS</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="LS2"   checked> <span class="t-LS2">LS2</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="PARTY"> <span class="t-PARTY">Party</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="YELL"> <span class="t-YELL">Yell</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="DEBUG"> <span class="t-DEBUG">Debug</span></label>
+  </div>
+
+  <div class="group">
+    <label>Size</label><input type="range" id="size" min="10" max="28" value="15">
+    <label>Font</label>
+    <select id="font">
+      <option value="'Consolas','Menlo',monospace">Mono</option>
+      <option value="'Segoe UI',Arial,sans-serif">Sans</option>
+      <option value="Georgia,serif">Serif</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>BG</label><input type="color" data-var="--bg"     value="#0e0f13">
+    <label>Say</label><input type="color" data-var="--say"    value="#ffffff">
+    <label>Shout</label><input type="color" data-var="--shout"  value="#ff7a4d">
+    <label>Tell</label><input type="color" data-var="--tell"   value="#ff7ad9">
+    <label>LS</label><input type="color" data-var="--ls"     value="#58d36e">
+    <label>LS2</label><input type="color" data-var="--ls2"    value="#5ad0c6">
+    <label>Party</label><input type="color" data-var="--party"  value="#6fa8ff">
+    <label>Yell</label><input type="color" data-var="--yell"   value="#ffd24d">
+  </div>
+
+  <div class="group">
+    <label class="toggle"><input type="checkbox" id="timestamps" checked> timestamps</label>
+    <label class="toggle"><input type="checkbox" id="autoscroll" checked> auto-scroll</label>
+    <label class="toggle"><input type="checkbox" id="showsystem"> system lines</label>
+  </div>
+
+  <div id="status">no folder</div>
+</header>
+
+<main id="log"></main>
+
+<footer>
+  Pick the folder once (Ashita4\config\addons\chatlog\logs). The viewer remembers it, re-requests permission on reload, and always watches the newest session_*.log.
+</footer>
+
+<div id="grant">
+  <div class="box">
+    <div>A saved logs folder was found, but the browser requires a click to grant access.</div>
+    <button id="grantBtn">Allow access</button>
+  </div>
+</div>
+
+<script>
+  const $  = sel => document.querySelector(sel);
+  const $$ = sel => document.querySelectorAll(sel);
+  const log = $('#log');
+  const state = {
+    dirHandle: null,
+    fileHandle: null,
+    fileName: null,
+    lastSize: 0,
+    lastText: '',
+    enabled: { SAY:true, SHOUT:true, TELL:true, LS:true, LS2:true, PARTY:false, YELL:false, DEBUG:false },
+    showTime: true, autoscroll: true, showSystem: false,
+    lines: [],
+    prefsLoaded: false,
+  };
+
+  // ---------- Style controls ----------
+  $$('input[type=color][data-var]').forEach(el => {
+    el.addEventListener('input', () => {
+      document.documentElement.style.setProperty(el.dataset.var, el.value);
+      savePrefs();
+    });
+  });
+  $('#size').addEventListener('input', e => {
+    document.documentElement.style.setProperty('--fontsize', e.target.value + 'px');
+    savePrefs();
+  });
+  $('#font').addEventListener('change', e => {
+    document.documentElement.style.setProperty('--fontfamily', e.target.value);
+    savePrefs();
+  });
+
+  $$('input[type=checkbox][data-chan]').forEach(el => {
+    el.addEventListener('change', () => {
+      state.enabled[el.dataset.chan] = el.checked;
+      render(); savePrefs();
+    });
+  });
+  $('#timestamps').addEventListener('change', e => { state.showTime = e.target.checked; render(); savePrefs(); });
+  $('#autoscroll').addEventListener('change', e => { state.autoscroll = e.target.checked; savePrefs(); });
+  $('#showsystem').addEventListener('change', e => { state.showSystem = e.target.checked; render(); savePrefs(); });
+
+  // ---------- Prefs in localStorage ----------
+  function savePrefs() {
+    if (!state.prefsLoaded) return;
+    const prefs = {
+      enabled: state.enabled,
+      showTime: state.showTime, autoscroll: state.autoscroll, showSystem: state.showSystem,
+      size: $('#size').value, font: $('#font').value,
+      colors: {}
+    };
+    $$('input[type=color][data-var]').forEach(el => { prefs.colors[el.dataset.var] = el.value; });
+    localStorage.setItem('chatviewer.prefs', JSON.stringify(prefs));
+  }
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem('chatviewer.prefs') || 'null');
+      if (p) {
+        Object.assign(state.enabled, p.enabled || {});
+        state.showTime   = p.showTime   ?? true;
+        state.autoscroll = p.autoscroll ?? true;
+        state.showSystem = p.showSystem ?? false;
+        $$('input[type=checkbox][data-chan]').forEach(el => { el.checked = !!state.enabled[el.dataset.chan]; });
+        $('#timestamps').checked = state.showTime;
+        $('#autoscroll').checked = state.autoscroll;
+        $('#showsystem').checked = state.showSystem;
+        if (p.size) { $('#size').value = p.size; document.documentElement.style.setProperty('--fontsize', p.size + 'px'); }
+        if (p.font) { $('#font').value = p.font; document.documentElement.style.setProperty('--fontfamily', p.font); }
+        if (p.colors) {
+          for (const [k,v] of Object.entries(p.colors)) {
+            document.documentElement.style.setProperty(k, v);
+            const el = document.querySelector(`input[data-var="${k}"]`);
+            if (el) el.value = v;
+          }
+        }
+      }
+    } catch (e) { console.warn(e); }
+    state.prefsLoaded = true;
+  }
+
+  // ---------- IndexedDB for dir handle ----------
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('chatviewer', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+  async function saveDir(handle) {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'logDir');
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function loadDir() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get('logDir');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+  async function clearDir() {
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').delete('logDir');
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // ---------- Directory + file tracking ----------
+  async function ensurePermission(handle, mode = 'read') {
+    const opts = { mode };
+    if ((await handle.queryPermission(opts)) === 'granted')  return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+    return false;
+  }
+
+  async function findNewestLog(dirHandle) {
+    let best = null;
+    for await (const [name, h] of dirHandle.entries()) {
+      if (h.kind !== 'file') continue;
+      if (!name.toLowerCase().endsWith('.log')) continue;
+      const f = await h.getFile();
+      if (best === null || f.lastModified > best.mtime) {
+        best = { name, handle: h, mtime: f.lastModified };
+      }
+    }
+    return best;
+  }
+
+  async function useDir(dirHandle) {
+    state.dirHandle = dirHandle;
+    await saveDir(dirHandle);
+    $('#status').textContent = 'folder: ' + dirHandle.name + ' (finding newest…)';
+    await refreshLatest(true);
+  }
+
+  async function refreshLatest(forceReset) {
+    if (!state.dirHandle) return;
+    const newest = await findNewestLog(state.dirHandle);
+    if (!newest) {
+      $('#status').textContent = 'folder: ' + state.dirHandle.name + ' (no .log files yet)';
+      state.fileHandle = null; state.fileName = null;
+      return;
+    }
+    if (forceReset || state.fileName !== newest.name) {
+      state.fileHandle = newest.handle;
+      state.fileName   = newest.name;
+      state.lastSize   = 0;
+      state.lastText   = '';
+      state.lines      = [];
+      log.innerHTML    = '';
+      $('#status').textContent = 'watching: ' + newest.name;
+    }
+  }
+
+  $('#pickDir').addEventListener('click', async () => {
+    if (!window.showDirectoryPicker) {
+      alert('This browser does not support the File System Access API. Use Edge or Chrome.');
+      return;
+    }
+    try {
+      const h = await window.showDirectoryPicker();
+      if (await ensurePermission(h)) { await useDir(h); }
+    } catch (e) { /* cancelled */ }
+  });
+
+  $('#forget').addEventListener('click', async () => {
+    await clearDir();
+    state.dirHandle = null; state.fileHandle = null; state.fileName = null;
+    state.lines = []; log.innerHTML = '';
+    $('#status').textContent = 'no folder';
+  });
+
+  // ---------- Poll loop ----------
+  async function poll() {
+    if (!state.dirHandle) return;
+    try {
+      await refreshLatest(false);      // detect new session file
+      if (!state.fileHandle) return;
+
+      const file = await state.fileHandle.getFile();
+      if (file.size === state.lastSize) return;
+      const text = await file.text();
+      state.lastSize = file.size;
+      if (!text.startsWith(state.lastText)) {
+        state.lines = []; log.innerHTML = '';
+        parseAll(text);
+      } else {
+        parseAll(text.slice(state.lastText.length));
+      }
+      state.lastText = text;
+      render();
+    } catch (e) {
+      $('#status').textContent = 'error: ' + e.message;
+    }
+  }
+  setInterval(poll, 1000);
+
+  // ---------- Parsing / render ----------
+  const LINE_RE = /^\[(\d{2}:\d{2}:\d{2})\]\s+\[([^\]]+)\]\s?(.*)$/;
+  const KNOWN = new Set(['SAY','SHOUT','TELL','LS','LS2','YELL','PARTY']);
+
+  function parseAll(chunk) {
+    for (const raw of chunk.split(/\r?\n/)) {
+      if (!raw) continue;
+      const m = raw.match(LINE_RE);
+      if (m) {
+        const tag = KNOWN.has(m[2]) ? m[2] : 'DEBUG';
+        state.lines.push({ t: m[1], tag, msg: (tag === 'DEBUG' ? '[' + m[2] + '] ' : '') + m[3] });
+      } else {
+        state.lines.push({ system: true, msg: raw });
+      }
+    }
+  }
+
+  function render() {
+    log.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (const ln of state.lines) {
+      if (ln.system) {
+        if (!state.showSystem) continue;
+        const d = document.createElement('div');
+        d.className = 'line system'; d.textContent = ln.msg;
+        frag.appendChild(d); continue;
+      }
+      if (!state.enabled[ln.tag]) continue;
+      const d = document.createElement('div');
+      d.className = 'line';
+      if (state.showTime) {
+        const t = document.createElement('span');
+        t.className = 'time'; t.textContent = ln.t;
+        d.appendChild(t);
+      }
+      const tag = document.createElement('span');
+      tag.className = 'tag t-' + ln.tag;
+      tag.textContent = '[' + ln.tag + ']';
+      d.appendChild(tag);
+      const msg = document.createElement('span');
+      msg.className = 't-' + ln.tag; msg.textContent = ln.msg;
+      d.appendChild(msg);
+      frag.appendChild(d);
+    }
+    log.appendChild(frag);
+    if (state.autoscroll) log.scrollTop = log.scrollHeight;
+  }
+
+  // ---------- Startup ----------
+  (async function init() {
+    loadPrefs();
+
+    const saved = await loadDir();
+    if (!saved) { $('#status').textContent = 'no folder - click "Pick logs folder…"'; return; }
+
+    // Try silent permission first.
+    if ((await saved.queryPermission({ mode: 'read' })) === 'granted') {
+      await useDir(saved);
+      return;
+    }
+
+    // Need a user gesture — show the modal prompt.
+    const grant = $('#grant'); grant.style.display = 'flex';
+    $('#grantBtn').addEventListener('click', async () => {
+      if (await ensurePermission(saved)) {
+        grant.style.display = 'none';
+        await useDir(saved);
+      }
+    });
+  })();
+</script>
+</body>
+</html>
