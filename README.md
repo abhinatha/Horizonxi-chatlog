@@ -111,8 +111,8 @@ All commands are entered in-game and start with `/chatlog`.
 
 Chat modes are read as `mode & 0xFF` (the low byte) so direction-flag bits in the upper bytes don't matter. Default mapping is the **HorizonXI** layout:
 
-| Channel | Outgoing (you) | Incoming (others) |
-|---|---|---|
+| Channel | Outgoing (you) | Incoming (others) | LS MOTD |
+|---|---|---|---|
 | SAY | 1 | 9 |
 | SHOUT | 2 | 10 |
 | YELL | 3 | 11 |
