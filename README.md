@@ -119,7 +119,7 @@ Chat modes are read as `mode & 0xFF` (the low byte) so direction-flag bits in th
 | TELL | 4 | 12 |
 | PARTY | 5 | 13 |
 | LS | 6 | 14 | 205 |
-| LS2 | 213 | 217 | 214 |
+| LS2 | 213 | 214 | 217 |
 
 If you're on a different server (or HorizonXI changes the modes), use `/chatlog debug on`, send a message in each channel, then map them with `/chatlog set <mode> <TAG>`. See **Adapting to a different server** below.
 
