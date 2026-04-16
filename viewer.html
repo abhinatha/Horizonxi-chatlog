@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FFXI Chat Viewer</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #171922;
+    --fg: #e6e6e6;
+    --muted: #8a8f9a;
+    --border: #2a2d39;
+    --say: #ffffff;
+    --shout: #ff7a4d;
+    --tell: #ff7ad9;
+    --ls:  #58d36e;
+    --ls2: #5ad0c6;
+    --yell: #ffd24d;
+    --party: #6fa8ff;
+    --fontsize: 15px;
+    --fontfamily: 'Consolas', 'Menlo', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: var(--fontfamily); font-size: var(--fontsize);
+    display: flex; flex-direction: column;
+  }
+
+  /* --- Header / toolbar --- */
+  header {
+    padding: 8px 10px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  header .group {
+    display: flex; gap: 6px; align-items: center;
+    padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+  }
+  header label { color: var(--muted); font-size: 12px; }
+  header button {
+    background: #242836; color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  header button:hover { background: #2e3346; }
+  header .toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  header input[type=color] { width: 28px; height: 22px; border: none; background: transparent; padding: 0; cursor: pointer; }
+  header input[type=range] { width: 110px; }
+  header select {
+    background: #242836; color: var(--fg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 6px; font: inherit;
+  }
+  #status { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .dot.on  { background: #58d36e; }
+  .dot.off { background: #ff4d4d; }
+
+  /* --- Chat log --- */
+  main { flex: 1; overflow: auto; padding: 8px 12px; scroll-behavior: smooth; }
+  .line { white-space: pre-wrap; word-break: break-word; line-height: 1.4; padding: 1px 0; }
+  .time { color: var(--muted); margin-right: 6px; }
+  .tag  { font-weight: 700; margin-right: 6px; }
+
+  .t-SAY    { color: var(--say); }
+  .t-SHOUT  { color: var(--shout); }
+  .t-TELL   { color: var(--tell); }
+  .t-LS     { color: var(--ls); }
+  .t-LS2    { color: var(--ls2); }
+  .t-YELL   { color: var(--yell); }
+  .t-PARTY  { color: var(--party); }
+  .t-DEBUG  { color: #999; }
+  .system   { color: var(--muted); font-style: italic; }
+
+  /* --- Footer --- */
+  footer {
+    padding: 6px 10px; background: var(--panel);
+    border-top: 1px solid var(--border); font-size: 12px; color: var(--muted);
+  }
+
+  /* --- Disconnected overlay --- */
+  #overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  #overlay .box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px 28px; max-width: 480px; text-align: center;
+  }
+  #overlay h2 { margin-bottom: 12px; font-size: 18px; }
+  #overlay p  { color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+  #overlay code {
+    display: block; background: #242836; padding: 10px; border-radius: 4px;
+    margin: 10px 0; text-align: left; font-size: 13px; color: #6fa8ff;
+  }
+  #overlay button { font-size: 15px; padding: 8px 16px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="group" id="connGroup">
+    <span class="dot off" id="connDot"></span>
+    <span id="connLabel" style="font-size:12px;color:var(--muted)">connecting…</span>
+  </div>
+
+  <div class="group">
+    <label class="toggle"><input type="checkbox" data-chan="SAY"   checked> <span class="t-SAY">Say</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="SHOUT" checked> <span class="t-SHOUT">Shout</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="TELL"  checked> <span class="t-TELL">Tell</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="LS"    checked> <span class="t-LS">LS</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="LS2"   checked> <span class="t-LS2">LS2</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="PARTY"> <span class="t-PARTY">Party</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="YELL"> <span class="t-YELL">Yell</span></label>
+    <label class="toggle"><input type="checkbox" data-chan="DEBUG"> <span class="t-DEBUG">Debug</span></label>
+  </div>
+
+  <div class="group">
+    <label>Size</label><input type="range" id="size" min="10" max="28" value="15">
+    <label>Font</label>
+    <select id="font">
+      <option value="'Consolas','Menlo',monospace">Mono</option>
+      <option value="'Segoe UI',Arial,sans-serif">Sans</option>
+      <option value="Georgia,serif">Serif</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label>BG</label><input type="color" data-var="--bg"     value="#0e0f13">
+    <label>Say</label><input type="color" data-var="--say"    value="#ffffff">
+    <label>Shout</label><input type="color" data-var="--shout"  value="#ff7a4d">
+    <label>Tell</label><input type="color" data-var="--tell"   value="#ff7ad9">
+    <label>LS</label><input type="color" data-var="--ls"     value="#58d36e">
+    <label>LS2</label><input type="color" data-var="--ls2"    value="#5ad0c6">
+    <label>Party</label><input type="color" data-var="--party"  value="#6fa8ff">
+    <label>Yell</label><input type="color" data-var="--yell"   value="#ffd24d">
+  </div>
+
+  <div class="group">
+    <label class="toggle"><input type="checkbox" id="timestamps" checked> timestamps</label>
+    <label class="toggle"><input type="checkbox" id="autoscroll" checked> auto-scroll</label>
+    <label class="toggle"><input type="checkbox" id="showsystem"> system lines</label>
+  </div>
+
+  <div id="status">–</div>
+</header>
+
+<main id="log"></main>
+
+<footer>
+  Polls the local server every second. Press F11 for fullscreen.
+</footer>
+
+<!-- Shown when the server isn't reachable -->
+<div id="overlay">
+  <div class="box">
+    <h2>Server not running</h2>
+    <p>The viewer needs a small local server to read the log files.<br>
+    Open a terminal in the chatlog folder and run:</p>
+    <code>python server.py "C:\Ashita4\config\addons\chatlog\logs"</code>
+    <p>Or just double-click <strong>start-viewer.bat</strong></p>
+    <button id="retryBtn">Retry connection</button>
+  </div>
+</div>
+
+<script>
+const $  = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+const log = $('#log');
+
+const API = (() => {
+  // If served by our own server.py, use same origin; otherwise localhost default.
+  const origin = location.origin;
+  if (origin && !origin.startsWith('file:')) return origin;
+  return 'http://127.0.0.1:8271';
+})();
+
+const state = {
+  connected: false,
+  lastContent: '',
+  fileName: null,
+  enabled: { SAY:true, SHOUT:true, TELL:true, LS:true, LS2:true, PARTY:false, YELL:false, DEBUG:false },
+  showTime: true, autoscroll: true, showSystem: false,
+  lines: [],
+  prefsLoaded: false,
+};
+
+// ---------- Style controls ----------
+$$('input[type=color][data-var]').forEach(el => {
+  el.addEventListener('input', () => {
+    document.documentElement.style.setProperty(el.dataset.var, el.value);
+    savePrefs();
+  });
+});
+$('#size').addEventListener('input', e => {
+  document.documentElement.style.setProperty('--fontsize', e.target.value + 'px');
+  savePrefs();
+});
+$('#font').addEventListener('change', e => {
+  document.documentElement.style.setProperty('--fontfamily', e.target.value);
+  savePrefs();
+});
+
+// ---------- Channel toggles ----------
+$$('input[type=checkbox][data-chan]').forEach(el => {
+  el.addEventListener('change', () => {
+    state.enabled[el.dataset.chan] = el.checked;
+    render(); savePrefs();
+  });
+});
+$('#timestamps').addEventListener('change', e => { state.showTime = e.target.checked; render(); savePrefs(); });
+$('#autoscroll').addEventListener('change', e => { state.autoscroll = e.target.checked; savePrefs(); });
+$('#showsystem').addEventListener('change', e => { state.showSystem = e.target.checked; render(); savePrefs(); });
+
+// ---------- Prefs (localStorage) ----------
+function savePrefs() {
+  if (!state.prefsLoaded) return;
+  const prefs = {
+    enabled: state.enabled,
+    showTime: state.showTime, autoscroll: state.autoscroll, showSystem: state.showSystem,
+    size: $('#size').value, font: $('#font').value,
+    colors: {}
+  };
+  $$('input[type=color][data-var]').forEach(el => { prefs.colors[el.dataset.var] = el.value; });
+  try { localStorage.setItem('chatviewer.prefs', JSON.stringify(prefs)); } catch(e) {}
+}
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('chatviewer.prefs') || 'null');
+    if (p) {
+      Object.assign(state.enabled, p.enabled || {});
+      state.showTime   = p.showTime   ?? true;
+      state.autoscroll = p.autoscroll ?? true;
+      state.showSystem = p.showSystem ?? false;
+      $$('input[type=checkbox][data-chan]').forEach(el => { el.checked = !!state.enabled[el.dataset.chan]; });
+      $('#timestamps').checked = state.showTime;
+      $('#autoscroll').checked = state.autoscroll;
+      $('#showsystem').checked = state.showSystem;
+      if (p.size) { $('#size').value = p.size; document.documentElement.style.setProperty('--fontsize', p.size + 'px'); }
+      if (p.font) { $('#font').value = p.font; document.documentElement.style.setProperty('--fontfamily', p.font); }
+      if (p.colors) {
+        for (const [k,v] of Object.entries(p.colors)) {
+          document.documentElement.style.setProperty(k, v);
+          const el = document.querySelector(`input[data-var="${k}"]`);
+          if (el) el.value = v;
+        }
+      }
+    }
+  } catch (e) { console.warn(e); }
+  state.prefsLoaded = true;
+}
+
+// ---------- Connection status ----------
+function setConnected(on, label) {
+  state.connected = on;
+  $('#connDot').className = 'dot ' + (on ? 'on' : 'off');
+  $('#connLabel').textContent = label || (on ? 'connected' : 'disconnected');
+  $('#overlay').style.display = on ? 'none' : 'flex';
+}
+
+// ---------- Parsing ----------
+const LINE_RE = /^\[(\d{2}:\d{2}:\d{2})\]\s*\[([^\]]+)\]\s?(.*)$/;
+const KNOWN = new Set(['SAY','SHOUT','TELL','LS','LS2','YELL','PARTY']);
+
+function parseAll(text) {
+  const lines = [];
+  for (const raw of text.split(/\r?\n/)) {
+    if (!raw) continue;
+    const m = raw.match(LINE_RE);
+    if (m) {
+      const tag = KNOWN.has(m[2]) ? m[2] : 'DEBUG';
+      lines.push({ t: m[1], tag, msg: (tag === 'DEBUG' ? '[' + m[2] + '] ' : '') + m[3] });
+    } else {
+      lines.push({ system: true, msg: raw });
+    }
+  }
+  return lines;
+}
+
+// ---------- Rendering ----------
+function render() {
+  log.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const ln of state.lines) {
+    if (ln.system) {
+      if (!state.showSystem) continue;
+      const d = document.createElement('div');
+      d.className = 'line system'; d.textContent = ln.msg;
+      frag.appendChild(d); continue;
+    }
+    if (!state.enabled[ln.tag]) continue;
+    const d = document.createElement('div');
+    d.className = 'line';
+    if (state.showTime) {
+      const t = document.createElement('span');
+      t.className = 'time'; t.textContent = ln.t;
+      d.appendChild(t);
+    }
+    const tag = document.createElement('span');
+    tag.className = 'tag t-' + ln.tag;
+    tag.textContent = '[' + ln.tag + ']';
+    d.appendChild(tag);
+    const msg = document.createElement('span');
+    msg.className = 't-' + ln.tag; msg.textContent = ln.msg;
+    d.appendChild(msg);
+    frag.appendChild(d);
+  }
+  log.appendChild(frag);
+  if (state.autoscroll) log.scrollTop = log.scrollHeight;
+}
+
+// ---------- Polling ----------
+let failCount = 0;
+
+async function poll() {
+  try {
+    const resp = await fetch(API + '/api/log', { signal: AbortSignal.timeout(3000) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    failCount = 0;
+
+    if (!state.connected) setConnected(true, 'connected');
+
+    if (data.file) {
+      $('#status').textContent = 'watching: ' + data.file;
+    } else {
+      $('#status').textContent = 'no log files yet';
+    }
+
+    if (data.content !== state.lastContent) {
+      // Detect file rotation (new file is shorter or starts differently)
+      if (!data.content.startsWith(state.lastContent.slice(0, 100))) {
+        state.lines = parseAll(data.content);
+      } else {
+        // Append only new lines
+        const newPart = data.content.slice(state.lastContent.length);
+        if (newPart) {
+          state.lines = state.lines.concat(parseAll(newPart));
+        }
+      }
+      state.lastContent = data.content;
+      render();
+    }
+  } catch (e) {
+    failCount++;
+    if (failCount >= 3) {
+      setConnected(false, 'disconnected');
+    }
+  }
+}
+
+$('#retryBtn').addEventListener('click', () => {
+  failCount = 0;
+  setConnected(false, 'connecting…');
+  $('#overlay').style.display = 'none';
+  poll();
+});
+
+// ---------- Init ----------
+loadPrefs();
+setConnected(false, 'connecting…');
+$('#overlay').style.display = 'none'; // hide initially while trying
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>
