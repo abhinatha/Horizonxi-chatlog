@@ -9,6 +9,10 @@ echo.
 set "LOGDIR="
 
 :: Check common Ashita install locations
+if exist "%APPDATA%\HorizonXI-Launcher\HorizonXI\Game\config\addons\chatlog\logs" (
+    set "LOGDIR=%USERPROFILE%\HorizonXI-Launcher\HorizonXI\Game\config\addons\chatlog\logs"
+    goto :found
+)
 if exist "C:\Ashita4\config\addons\chatlog\logs" (
     set "LOGDIR=C:\Ashita4\config\addons\chatlog\logs"
     goto :found
