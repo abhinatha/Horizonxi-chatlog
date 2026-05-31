@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FFXI Chat Viewer</title>
 <style>
   :root {
@@ -96,6 +97,82 @@
     margin: 10px 0; text-align: left; font-size: 13px; color: #6fa8ff;
   }
   #overlay button { font-size: 15px; padding: 8px 16px; margin-top: 8px; }
+
+  /* --- Collapsible groups --- */
+  .group.collapsible { padding: 4px 6px; }
+  .group-toggle {
+    background: none; border: none; color: var(--muted);
+    font-size: 11px; padding: 2px 4px; cursor: pointer; font: inherit;
+    display: inline-flex; align-items: center; gap: 4px;
+    user-select: none; text-transform: uppercase; letter-spacing: 0.5px;
+    border-right: 1px solid var(--border); margin-right: 4px;
+  }
+  .group-toggle:hover { color: var(--fg); }
+  .group-toggle .chev { font-size: 9px; transition: transform 0.15s; }
+  .group.collapsed .group-toggle .chev { transform: rotate(-90deg); }
+  .group.collapsed .group-toggle { border-right: none; margin-right: 0; padding-right: 2px; }
+  .group.collapsed > :not(.group-toggle) { display: none !important; }
+
+  /* --- Alerts --- */
+  .alerts-group input[type=text] {
+    background: #242836; color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; width: 130px; font: inherit; font-size: 13px;
+  }
+  .alerts-group input[type=range] { width: 70px; }
+  .alerts-group .test-btn { padding: 2px 8px; }
+  @media (max-width: 720px) {
+    .alerts-group input[type=text] { width: 100px; }
+  }
+
+  /* --- Composer --- */
+  .composer {
+    display: flex; gap: 6px; padding: 8px;
+    background: var(--panel); border-top: 1px solid var(--border);
+    align-items: center;
+  }
+  .composer[hidden] { display: none; }
+  .composer select, .composer input {
+    background: #242836; color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 6px 8px; font: inherit;
+  }
+  .composer .msg    { flex: 1; min-width: 0; }
+  .composer .target { width: 140px; }
+  .composer .target.hidden { display: none; }
+  .composer button {
+    background: #2e6fd6; color: #fff; border: none; border-radius: 4px;
+    padding: 6px 16px; cursor: pointer; font: inherit; font-weight: 600;
+  }
+  .composer button:hover    { background: #4a87e6; }
+  .composer button:disabled { background: #444; cursor: not-allowed; }
+  .composer .err {
+    color: #ff7777; font-size: 12px; margin-left: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 200px;
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 720px) {
+    header { padding: 6px; gap: 6px; }
+    header .group { padding: 6px 8px; flex-wrap: wrap; }
+    header input[type=range] { width: 100px; }
+    header input[type=color] { width: 34px; height: 30px; }
+    header input[type=checkbox] { width: 18px; height: 18px; }
+    header label, header .toggle, header button, header select { font-size: 14px; }
+    main { padding: 6px 8px; }
+    #status { width: 100%; margin-left: 0; order: 99; text-align: center; }
+    footer { display: none; }
+    .composer { flex-wrap: wrap; padding: 6px; gap: 4px; }
+    .composer .target { width: 110px; }
+    .composer .msg    { flex-basis: 100%; order: 10; }
+    .composer button  { padding: 8px 16px; order: 11; }
+    .composer .err    { flex-basis: 100%; order: 12; max-width: none; }
+  }
+  @media (hover: none) {
+    header .toggle { padding: 2px 4px; }
+    header input[type=checkbox] { transform: scale(1.2); }
+  }
 </style>
 </head>
 <body>
@@ -106,7 +183,8 @@
     <span id="connLabel" style="font-size:12px;color:var(--muted)">connecting…</span>
   </div>
 
-  <div class="group">
+  <div class="group collapsible" data-collapse-key="channels">
+    <button class="group-toggle" type="button" title="Show/hide channel toggles">Channels<span class="chev">▾</span></button>
     <label class="toggle"><input type="checkbox" data-chan="SAY"   checked> <span class="t-SAY">Say</span></label>
     <label class="toggle"><input type="checkbox" data-chan="SHOUT" checked> <span class="t-SHOUT">Shout</span></label>
     <label class="toggle"><input type="checkbox" data-chan="TELL"  checked> <span class="t-TELL">Tell</span></label>
@@ -127,7 +205,8 @@
     </select>
   </div>
 
-  <div class="group">
+  <div class="group collapsible" data-collapse-key="colors">
+    <button class="group-toggle" type="button" title="Show/hide color pickers">Colors<span class="chev">▾</span></button>
     <label>BG</label><input type="color" data-var="--bg"     value="#0e0f13">
     <label>Say</label><input type="color" data-var="--say"    value="#ffffff">
     <label>Shout</label><input type="color" data-var="--shout"  value="#ff7a4d">
@@ -138,16 +217,48 @@
     <label>Yell</label><input type="color" data-var="--yell"   value="#ffd24d">
   </div>
 
-  <div class="group">
+  <div class="group collapsible" data-collapse-key="display">
+    <button class="group-toggle" type="button" title="Show/hide display options">Display<span class="chev">▾</span></button>
     <label class="toggle"><input type="checkbox" id="timestamps" checked> timestamps</label>
     <label class="toggle"><input type="checkbox" id="autoscroll" checked> auto-scroll</label>
     <label class="toggle"><input type="checkbox" id="showsystem"> system lines</label>
+  </div>
+
+  <div class="group alerts-group collapsible" data-collapse-key="alerts" title="Notification alerts">
+    <button class="group-toggle" type="button" title="Show/hide alert settings">🔔 Alerts<span class="chev">▾</span></button>
+    <label class="toggle"><input type="checkbox" id="alertTell" checked> Tell</label>
+    <label class="toggle"><input type="checkbox" id="alertMention" checked> Mention</label>
+    <input type="text" id="alertNames" placeholder="your name(s)"
+           autocomplete="off" autocorrect="off" spellcheck="false"
+           title="Comma-separated names to alert on. e.g. Levi, Cathy">
+    <input type="range" id="alertVolume" min="0" max="100" value="50" title="Alert volume">
+    <button id="alertTest" class="test-btn" type="button" title="Test sound + grant notification permission">🔊</button>
   </div>
 
   <div id="status">–</div>
 </header>
 
 <main id="log"></main>
+
+<div class="composer" id="composer" hidden>
+  <select id="sendChannel" aria-label="Channel">
+    <option value="ls" selected>LS</option>
+    <option value="ls2">LS2</option>
+    <option value="tell">Tell</option>
+    <option value="party">Party</option>
+    <option value="say">Say</option>
+    <option value="shout">Shout</option>
+    <option value="yell">Yell</option>
+  </select>
+  <input type="text" id="sendTarget" class="target hidden"
+         placeholder="player name" maxlength="16" autocomplete="off"
+         autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input type="text" id="sendMessage" class="msg"
+         placeholder="message — Enter to send" maxlength="150"
+         autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="sendBtn" type="button">Send</button>
+  <span class="err" id="sendErr"></span>
+</div>
 
 <footer>
   Polls the local server every second. Press F11 for fullscreen.
@@ -157,10 +268,10 @@
 <div id="overlay">
   <div class="box">
     <h2>Server not running</h2>
-    <p>The viewer needs a small local server to read the log files.<br>
-    Open a terminal in the chatlog folder and run:</p>
-    <code>python server.py "C:\Ashita4\config\addons\chatlog\logs"</code>
-    <p>Or just double-click <strong>start-viewer.bat</strong></p>
+    <p>The viewer can't reach the server at <strong id="overlayHost"></strong>.<br>
+    On the PC running Ashita, start the server:</p>
+    <code>python server.py "C:\Ashita4\config\addons\chatlog\logs" --host 0.0.0.0</code>
+    <p>Or double-click <strong>start-viewer.bat</strong> with a <code>chatviewer.host</code> file containing <code>0.0.0.0</code>.</p>
     <button id="retryBtn">Retry connection</button>
   </div>
 </div>
@@ -177,6 +288,8 @@ const API = (() => {
   return 'http://127.0.0.1:8271';
 })();
 
+document.getElementById('overlayHost').textContent = API;
+
 const state = {
   connected: false,
   lastContent: '',
@@ -185,7 +298,17 @@ const state = {
   showTime: true, autoscroll: true, showSystem: false,
   lines: [],
   prefsLoaded: false,
+  alerts: {
+    tell: true,
+    mention: true,
+    names: '',
+    volume: 0.5,
+  },
+  collapsed: { channels: false, display: false, colors: false, alerts: false },
 };
+let alertCursor = null;     // null on first poll → suppresses backlog alerts
+let unreadCount = 0;
+let audioCtx = null;
 
 // ---------- Style controls ----------
 $$('input[type=color][data-var]').forEach(el => {
@@ -221,7 +344,9 @@ function savePrefs() {
     enabled: state.enabled,
     showTime: state.showTime, autoscroll: state.autoscroll, showSystem: state.showSystem,
     size: $('#size').value, font: $('#font').value,
-    colors: {}
+    colors: {},
+    alerts: state.alerts,
+    collapsed: state.collapsed,
   };
   $$('input[type=color][data-var]').forEach(el => { prefs.colors[el.dataset.var] = el.value; });
   try { localStorage.setItem('chatviewer.prefs', JSON.stringify(prefs)); } catch(e) {}
@@ -245,6 +370,20 @@ function loadPrefs() {
           document.documentElement.style.setProperty(k, v);
           const el = document.querySelector(`input[data-var="${k}"]`);
           if (el) el.value = v;
+        }
+      }
+      if (p.alerts) {
+        Object.assign(state.alerts, p.alerts);
+        $('#alertTell').checked    = !!state.alerts.tell;
+        $('#alertMention').checked = !!state.alerts.mention;
+        $('#alertNames').value     = state.alerts.names || '';
+        $('#alertVolume').value    = Math.round((state.alerts.volume ?? 0.5) * 100);
+      }
+      if (p.collapsed) {
+        Object.assign(state.collapsed, p.collapsed);
+        for (const [key, isCollapsed] of Object.entries(state.collapsed)) {
+          const group = document.querySelector(`.collapsible[data-collapse-key="${key}"]`);
+          if (group) group.classList.toggle('collapsed', !!isCollapsed);
         }
       }
     }
@@ -311,6 +450,115 @@ function render() {
   if (state.autoscroll) log.scrollTop = log.scrollHeight;
 }
 
+// ---------- Collapsible groups ----------
+$$('.collapsible').forEach(group => {
+  const btn = group.querySelector('.group-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const key = group.dataset.collapseKey;
+    const isCollapsed = group.classList.toggle('collapsed');
+    if (key) state.collapsed[key] = isCollapsed;
+    savePrefs();
+  });
+});
+
+// ---------- Alerts (sound + browser notification + title flash) ----------
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) { /* unsupported */ }
+}
+
+function playAlertSound() {
+  ensureAudio();
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const v = Math.max(0, Math.min(1, state.alerts.volume));
+  if (v === 0) return;
+  // Two-tone "ding-dong" via overlapping oscillators.
+  const tone = (freq, start, dur) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t + start);
+    gain.gain.linearRampToValueAtTime(0.3 * v, t + start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + start + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t + start);
+    osc.stop(t + start + dur);
+  };
+  tone(880, 0,    0.18);
+  tone(660, 0.12, 0.25);
+}
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function getAlertNames() {
+  return state.alerts.names.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+}
+
+// Heuristic: chat lines starting with "You " (You say/shout/yell, You tell, etc.)
+// or ">>" (outgoing tell prefix) are messages the player sent themselves.
+function isOutgoing(msg) { return msg.startsWith('You ') || msg.startsWith('>>'); }
+
+function shouldAlert(line) {
+  if (line.system) return false;
+  // Tell alerts: any incoming TELL line
+  if (line.tag === 'TELL' && state.alerts.tell && !isOutgoing(line.msg)) return true;
+  // Mention alerts: name appears as a whole word in an incoming line
+  if (state.alerts.mention) {
+    const names = getAlertNames();
+    if (names.length === 0) return false;
+    if (isOutgoing(line.msg)) return false;
+    for (const name of names) {
+      if (new RegExp(`\\b${escapeRegex(name)}\\b`, 'i').test(line.msg)) return true;
+    }
+  }
+  return false;
+}
+
+function fireAlert(line) {
+  playAlertSound();
+  if (document.hidden) {
+    unreadCount++;
+    document.title = `(${unreadCount}) FFXI Chat Viewer`;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(`FFXI ${line.tag || ''}`, {
+          body: (line.msg || '').slice(0, 200),
+          silent: true,  // we played our own sound
+          tag: 'ffxi-chat',  // collapse into a single notification stack
+        });
+      } catch (e) { /* some platforms reject options; ignore */ }
+    }
+  }
+}
+
+window.addEventListener('focus', () => {
+  if (unreadCount > 0) {
+    unreadCount = 0;
+    document.title = 'FFXI Chat Viewer';
+  }
+});
+
+// Bind alert UI
+$('#alertTell').addEventListener('change',    e => { state.alerts.tell    = e.target.checked; savePrefs(); });
+$('#alertMention').addEventListener('change', e => { state.alerts.mention = e.target.checked; savePrefs(); });
+$('#alertNames').addEventListener('input',    e => { state.alerts.names   = e.target.value;   savePrefs(); });
+$('#alertVolume').addEventListener('input',   e => { state.alerts.volume  = e.target.value / 100; savePrefs(); });
+$('#alertTest').addEventListener('click', () => {
+  ensureAudio();
+  playAlertSound();
+  // First click is also a user gesture — request notification permission
+  // here so the browser actually shows the prompt (most browsers ignore
+  // requestPermission() unless triggered by a user action).
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+});
+
 // ---------- Polling ----------
 let failCount = 0;
 
@@ -321,7 +569,11 @@ async function poll() {
     const data = await resp.json();
     failCount = 0;
 
-    if (!state.connected) setConnected(true, 'connected');
+    if (!state.connected) {
+      setConnected(true, 'connected');
+      // Server may have restarted with different send config — re-probe.
+      if (typeof refreshSendAvailability === 'function') refreshSendAvailability();
+    }
 
     if (data.file) {
       $('#status').textContent = 'watching: ' + data.file;
@@ -331,15 +583,26 @@ async function poll() {
 
     if (data.content !== state.lastContent) {
       // Detect file rotation (new file is shorter or starts differently)
+      let rotated = false;
       if (!data.content.startsWith(state.lastContent.slice(0, 100))) {
         state.lines = parseAll(data.content);
+        rotated = true;
       } else {
         // Append only new lines
         const newPart = data.content.slice(state.lastContent.length);
         if (newPart) {
-          state.lines = state.lines.concat(parseAll(newPart));
+          const newLines = parseAll(newPart);
+          state.lines = state.lines.concat(newLines);
+          // Fire alerts only for genuinely new lines (skip first-poll backlog)
+          if (alertCursor !== null) {
+            for (const ln of newLines) {
+              if (shouldAlert(ln)) fireAlert(ln);
+            }
+          }
         }
       }
+      // First poll OR file rotation: don't replay alerts for whatever is on disk
+      if (rotated || alertCursor === null) alertCursor = state.lines.length;
       state.lastContent = data.content;
       render();
     }
@@ -364,6 +627,83 @@ setConnected(false, 'connecting…');
 $('#overlay').style.display = 'none'; // hide initially while trying
 poll();
 setInterval(poll, 1000);
+
+// ---------- Composer (send chat to game) ----------
+const channelSel = $('#sendChannel');
+const targetInp  = $('#sendTarget');
+const msgInp     = $('#sendMessage');
+const sendBtn    = $('#sendBtn');
+const sendErr    = $('#sendErr');
+const composer   = $('#composer');
+
+function updateTargetVisibility() {
+  const isTell = channelSel.value === 'tell';
+  targetInp.classList.toggle('hidden', !isTell);
+}
+channelSel.addEventListener('change', () => {
+  updateTargetVisibility();
+  if (channelSel.value === 'tell') targetInp.focus();
+  else msgInp.focus();
+});
+
+async function sendChat() {
+  const channel = channelSel.value;
+  const message = msgInp.value;
+  const target  = targetInp.value.trim();
+  if (!message.trim()) return;
+  if (channel === 'tell' && !target) {
+    sendErr.textContent = 'tell needs a target name';
+    targetInp.focus();
+    return;
+  }
+  sendErr.textContent = '';
+  sendBtn.disabled = true;
+  try {
+    const r = await fetch(API + '/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channel,
+        message,
+        target: channel === 'tell' ? target : undefined,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = await r.json().catch(() => ({ ok: false, error: 'bad response' }));
+    if (data.ok) {
+      msgInp.value = '';
+      msgInp.focus();
+    } else {
+      sendErr.textContent = data.error || ('send failed (HTTP ' + r.status + ')');
+    }
+  } catch (e) {
+    sendErr.textContent = 'network error';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+sendBtn.addEventListener('click', sendChat);
+msgInp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+targetInp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); msgInp.focus(); }
+});
+updateTargetVisibility();
+
+// Probe whether *this* client is allowed to send. Re-checked on reconnect.
+async function refreshSendAvailability() {
+  try {
+    const r = await fetch(API + '/api/status', { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    composer.hidden = !d.send_enabled;
+  } catch (e) {
+    composer.hidden = true;
+  }
+}
+refreshSendAvailability();
 </script>
 </body>
 </html>

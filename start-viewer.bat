@@ -6,6 +6,14 @@ set "CFG=%~dp0chatviewer.cfg"
 set "LOGDIR="
 
 :: ---------------------------------------------------------------------------
+:: Note on chatviewer.host:
+::   This file is now read by server.py itself, not by this bat. Format:
+::     Line 1: bind address (default 127.0.0.1)
+::     Line 2+: flag keywords - remote-send | disable-send | no-browser
+::     Lines starting with ; are comments. Blank lines ignored.
+:: ---------------------------------------------------------------------------
+
+:: ---------------------------------------------------------------------------
 :: 1. Check if we already have a saved path
 :: ---------------------------------------------------------------------------
 if exist "%CFG%" (
@@ -27,9 +35,7 @@ for %%D in (
     "C:\Ashita4\config\addons\chatlog\logs"
     "D:\Ashita4\config\addons\chatlog\logs"
     "C:\Games\Ashita4\config\addons\chatlog\logs"
-    "D:\Games\Ashita4\config\addons\chatlog\logs"
-    "%USERPROFILE%\Desktop\Ashita4\config\addons\chatlog\logs"
-    "%APPDATA%\HorizonXI-Launcher\HorizonXI\Game\config\addons\chatlog\logs"
+    "Q:\SteamLibrary\steamapps\common\FFXINA\config\addons\chatlog\logs"
 ) do (
     if exist %%D (
         set "LOGDIR=%%~D"
